@@ -3,6 +3,9 @@ import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
 import { connectDB } from "./db";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -22,7 +25,7 @@ app.get("/api/save", async (req, res) => {
   res.send({ success: true, id: result.insertedId });
 });
 
-const PORT =  3001;
+const PORT = 3001;
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
