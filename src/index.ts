@@ -12,6 +12,7 @@ const FETCH_INTERVAL = 60 * 1000; // 1 min
 
 let wss: any;
 
+// sends db a broadcast message to all regions clients
 function broadcast(message: any) {
   if (!wss) return;
   wss.clients.forEach((client: any) => {
