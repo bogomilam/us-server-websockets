@@ -1,31 +1,51 @@
-import express from "express";
-// const express = require("express");
-import http from "http";
-import { WebSocketServer } from "ws";
-import { connectDB } from "./db";
+// src/index.ts
+import { MongoClient, Db } from "mongodb";
+import { startWebSocketServer } from "./websocket";
+import { fetchAndStore } from "./data/fetchData";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const MONGO_URI = process.env.MONGO_URI!;
+const DB_NAME = process.env.DB_NAME || "servers-db";
+const FETCH_INTERVAL = 60 * 1000; // 1 min
 
-wss.on("connection", (ws) => {
-  console.log("Client connected via WebSocket");
-  ws.send(JSON.stringify({ message: "Connected to server" }));
-});
+let wss: any;
 
-app.get("/api/save", async (req, res) => {
-  const db = await connectDB();
-  const collection = db.collection("status");
+function broadcast(message: any) {
+  if (!wss) return;
+  wss.clients.forEach((client: any) => {
+    if (client.readyState === 1) client.send(JSON.stringify(message));
+  });
+}
 
-  const result = await collection.insertOne({ time: new Date(), status: "ok" });
+async function connectMongo(): Promise<Db> {
+  console.log(`🌐 Connecting to MongoDB at: ${MONGO_URI}`);
+  const client = new MongoClient(MONGO_URI);
+  await client.connect();
+  console.log(`✅ Connected to MongoDB: ${DB_NAME}`);
+  return client.db(DB_NAME);
+}
 
-  res.send({ success: true, id: result.insertedId });
-});
+async function start() {
+  try {
+    const db = await connectMongo();
 
-const PORT = 3001;
-server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+    // Start WebSocket server
+    wss = startWebSocketServer(db, 8080);
+
+    // Initial fetch
+    await fetchAndStore(db, broadcast);
+
+    // Schedule recurring fetches
+    setInterval(() => {
+      console.log("⏱️ Running scheduled fetch...");
+      fetchAndStore(db, broadcast);
+    }, FETCH_INTERVAL);
+  } catch (err) {
+    console.error("❌ Error starting server:", err);
+  }
+}
+
+console.log("🚀 Running src/index.ts");
+start();

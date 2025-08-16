@@ -1,31 +1,26 @@
-const regions = [
-  "us-east",
-  "eu-west",
-  "eu-central",
-  "us-west",
-  "sa-east",
-  "ap-southeast",
-];
+import { Db } from "mongodb";
+import { ENDPOINTS } from "../config";
 
-async function fetchRegionData(region: string) {
-  const url = `https://data--${region}.upscope.io/status?stats=1`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    const data = await res.json();
-    console.log(`[${new Date().toISOString()}] ${region}:`, data);
-    // TODO: Save to DB
-  } catch (err) {
-    console.error(`Error fetching ${region}:`, (err as Error).message);
+/**
+ * Fetch data from all endpoints and store in MongoDB
+ * @param db - MongoDB database instance
+ * @param broadcast - optional callback to broadcast new data
+ */
+export async function fetchAndStore(db: Db, broadcast?: (msg: any) => void) {
+  for (const endpoint of ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint.url);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+
+      const doc = { ...data, endpoint: endpoint.region, createdAt: new Date() };
+
+      await db.collection("status").insertOne(doc);
+      console.log(`✅ Fetched ${endpoint.region}`);
+
+      if (broadcast) broadcast({ type: "update", data: doc });
+    } catch (err) {
+      console.error(`❌ Error fetching ${endpoint.region}:`, err);
+    }
   }
 }
-
-async function fetchAllRegions() {
-  await Promise.all(regions.map(fetchRegionData)); // fetch in parallel
-}
-
-// Run immediately
-fetchAllRegions();
-
-// Repeat every 60 seconds
-setInterval(fetchAllRegions, 5_000);
