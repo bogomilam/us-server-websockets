@@ -1,3 +1,4 @@
+import { WebSocketServer } from "ws";
 import { Db } from "mongodb";
-export declare function createWebSocketServer(db: Db): import("ws").Server<typeof import("ws"), typeof import("http").IncomingMessage>;
+export declare function startWebSocketServer(db: Db, port?: number): WebSocketServer;
 //# sourceMappingURL=websocket.d.ts.map

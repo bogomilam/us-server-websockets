@@ -11,22 +11,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.connectDB = connectDB;
 const mongodb_1 = require("mongodb");
-const config_1 = require("./config");
 let client;
 function connectDB() {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!client) {
-            client = new mongodb_1.MongoClient(config_1.MONGO_URI);
+        try {
+            const uri = process.env.MONGO_URI;
+            const dbName = process.env.DB_NAME || "servers-db";
+            console.log("🌐 Connecting to MongoDB at:", uri);
+            client = new mongodb_1.MongoClient(uri);
             yield client.connect();
-            console.log("✅ Connected to MongoDB:", config_1.MONGO_URI);
-            console.log("✅ Connected to MongoDB");
-            const db = client.db(config_1.DB_NAME);
-            // Ensure TTL index for auto-expire after 7 days
-            yield db
-                .collection("status")
-                .createIndex({ createdAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
+            console.log("✅ Connected to MongoDB:", dbName);
+            return client.db(dbName);
         }
-        return client.db(config_1.DB_NAME);
+        catch (err) {
+            console.error("❌ MongoDB connection failed:", err);
+            throw err;
+        }
     });
 }
 //# sourceMappingURL=db.js.map

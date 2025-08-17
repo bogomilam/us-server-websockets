@@ -12,39 +12,53 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-// const express = require("express");
-const http_1 = __importDefault(require("http"));
-const ws_1 = require("ws");
-const db_1 = require("./db");
+// src/index.ts
+const mongodb_1 = require("mongodb");
+const websocket_1 = require("./websocket");
+const fetchData_1 = require("./data/fetchData");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const app = (0, express_1.default)();
-const server = http_1.default.createServer(app);
-const wss = new ws_1.WebSocketServer({ server });
-wss.on("connection", (ws) => {
-    console.log("Client connected via WebSocket");
-    ws.send(JSON.stringify({ message: "Connected to server" }));
-    wss.on("request", function (request) {
-        console.log("ws received");
-        const connection = request.accept(null, request.origin);
-        connection.on("message", function (message) {
-            console.log("Received Message:", message.utf8Data);
-            connection.sendUTF("Hi this is WebSocket server!");
-        });
-        connection.on("close", function (reasonCode, description) {
-            console.log("Client has disconnected.", reasonCode, description);
-        });
+const MONGO_URI = process.env.MONGO_URI;
+const DB_NAME = process.env.DB_NAME || "servers-db";
+const FETCH_INTERVAL = 60 * 1000; // 1 min
+let wss;
+// sends db a broadcast message to all regions clients
+function broadcast(message) {
+    if (!wss)
+        return;
+    wss.clients.forEach((client) => {
+        if (client.readyState === 1)
+            client.send(JSON.stringify(message));
     });
-});
-app.get("/api/save", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const db = yield (0, db_1.connectDB)();
-    const collection = db.collection("status");
-    const result = yield collection.insertOne({ time: new Date(), status: "ok" });
-    res.send({ success: true, id: result.insertedId });
-}));
-const PORT = 3001;
-server.listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
-});
+}
+function connectMongo() {
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log(`🌐 Connecting to MongoDB at: ${MONGO_URI}`);
+        const client = new mongodb_1.MongoClient(MONGO_URI);
+        yield client.connect();
+        console.log(`✅ Connected to MongoDB: ${DB_NAME}`);
+        return client.db(DB_NAME);
+    });
+}
+function start() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const db = yield connectMongo();
+            // Start WebSocket server
+            wss = (0, websocket_1.startWebSocketServer)(db, 8080);
+            // Initial fetch
+            yield (0, fetchData_1.fetchAndStore)(db, broadcast);
+            // Schedule recurring fetches
+            setInterval(() => {
+                console.log("⏱️ Running scheduled fetch...");
+                (0, fetchData_1.fetchAndStore)(db, broadcast);
+            }, FETCH_INTERVAL);
+        }
+        catch (err) {
+            console.error("❌ Error starting server:", err);
+        }
+    });
+}
+console.log("🚀 Running src/index.ts");
+start();
 //# sourceMappingURL=index.js.map

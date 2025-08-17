@@ -11,28 +11,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchAndStore = fetchAndStore;
 const config_1 = require("../config");
-function fetchAndStore(db, wsServer) {
+/**
+ * Fetch data from all endpoints and store in MongoDB
+ * @param db - MongoDB database instance
+ * @param broadcast - optional callback to broadcast new data
+ */
+function fetchAndStore(db, broadcast) {
     return __awaiter(this, void 0, void 0, function* () {
-        for (const ep of config_1.ENDPOINTS) {
+        for (const endpoint of config_1.ENDPOINTS) {
             try {
-                const res = yield fetch(ep.url);
+                const res = yield fetch(endpoint.url);
+                if (!res.ok)
+                    throw new Error(`HTTP error ${res.status}`);
                 const data = yield res.json();
-                const doc = {
-                    region: ep.region,
-                    data,
-                    createdAt: new Date(),
-                };
+                const doc = Object.assign(Object.assign({}, data), { endpoint: endpoint.region, createdAt: new Date() });
                 yield db.collection("status").insertOne(doc);
-                // Broadcast new data
-                wsServer.clients.forEach((client) => {
-                    if (client.readyState === 1) {
-                        client.send(JSON.stringify({ type: "live", data: doc }));
-                    }
-                });
-                console.log(`✅ Fetched ${ep.region}`);
+                console.log(`✅ Fetched ${endpoint.region}`);
+                if (broadcast)
+                    broadcast({ type: "update", data: doc });
             }
             catch (err) {
-                console.error(`❌ Error fetching ${ep.region}:`, err);
+                console.error(`❌ Error fetching ${endpoint.region}:`, err);
             }
         }
     });
