@@ -8,7 +8,7 @@ dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI!;
 const DB_NAME = process.env.DB_NAME || "servers-db";
-const FETCH_INTERVAL = 60 * 1000; // 1 min
+const FETCH_INTERVAL = 5 * 1000; // 10 sec
 
 let wss: any;
 

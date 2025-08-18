@@ -1,61 +1,45 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
+// import axios from "axios";
+// import { Db } from "mongodb";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchAndStore = fetchAndStore;
-const ws_1 = require("ws");
-const regions = [
-    "us-east",
-    "eu-west",
-    "eu-central",
-    "us-west",
-    "sa-east",
-    "ap-southeast",
-];
-// Fetch data for a single region
-function fetchRegion(region) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const url = `https://data--${region}.upscope.io/status?stats=1`;
-        const res = yield fetch(url);
-        if (!res.ok)
-            throw new Error(`Failed to fetch ${region}: ${res.statusText}`);
-        return res.json();
-    });
-}
-// Broadcast to all clients connected to a specific region
-function broadcastToRegion(wss, region, payload) {
-    wss.clients.forEach((client) => {
-        if (client.region === region &&
-            client.readyState === ws_1.WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: "update", data: payload }));
-        }
-    });
-}
-// Main function
-function fetchAndStore(db, wss) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const collection = db.collection("status");
-        for (const region of regions) {
-            try {
-                const data = yield fetchRegion(region);
-                const doc = Object.assign(Object.assign({}, data), { createdAt: new Date() });
-                // Store in MongoDB
-                yield collection.insertOne(doc);
-                // Broadcast to WS clients
-                broadcastToRegion(wss, region, doc);
-                console.log(`✅ Fetched and stored data for ${region} - ${data}`);
-            }
-            catch (err) {
-                console.error(`❌ Error fetching ${region}:`, err);
-            }
-        }
-    });
-}
+// const REGIONS = [
+//   "us-east",
+//   "eu-west",
+//   "eu-central",
+//   "us-west",
+//   "sa-east",
+//   "ap-southeast",
+// ] as const;
+// const urlFor = (region: string) =>
+//   `https://data--${region}.upscope.io/status?stats=1`;
+// export async function fetchAndStore(db: Db, broadcast: (msg: any) => void) {
+//   for (const region of REGIONS) {
+//     try {
+//       const { data } = await axios.get(urlFor(region), { timeout: 10_000 });
+//       const doc = {
+//         region,
+//         createdAt: new Date(),
+//         status: data.status ?? "unknown",
+//         serversCount: data.results?.stats?.servers_count ?? null,
+//         online: data.results?.stats?.online ?? null,
+//         session: data.results?.stats?.session ?? null,
+//         cpuLoad: data.results?.stats?.server?.cpu_load ?? null,
+//         activeConnections:
+//           data.results?.stats?.server?.active_connections ?? null,
+//         waitTime: data.results?.stats?.server?.wait_time ?? null,
+//         raw: data,
+//       };
+//       // Insert into DB
+//       await db.collection("status").insertOne(doc);
+//       // Prune >7 days old
+//       await db.collection("status").deleteMany({
+//         createdAt: { $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+//       });
+//       // Broadcast to all connected clients
+//       broadcast({ type: "live", data: doc });
+//     } catch (err) {
+//       console.error(`❌ Error fetching data for ${region}:`, err);
+//     }
+//   }
+// }
 //# sourceMappingURL=fetcher.js.map

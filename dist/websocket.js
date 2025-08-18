@@ -11,34 +11,55 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startWebSocketServer = startWebSocketServer;
 const ws_1 = require("ws");
+const HISTORY_LIMIT = 50; // max items to send to client
 function startWebSocketServer(db, port = 8080) {
-    // Create a single WebSocket server
     const wss = new ws_1.WebSocketServer({ port });
     wss.on("connection", (socket) => __awaiter(this, void 0, void 0, function* () {
         console.log("🔌 Client connected");
-        // Send last 7 days of history when a client connects
+        // Default: send all regions history (7 days)
         try {
             const history = yield db
                 .collection("status")
                 .find({
                 createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
             })
+                .sort({ createdAt: 1 })
+                .limit(HISTORY_LIMIT)
                 .toArray();
             socket.send(JSON.stringify({ type: "history", data: history }));
         }
         catch (err) {
-            console.error("❌ Error sending history to client:", err);
+            console.error("❌ Error sending history:", err);
         }
-        // Optionally listen to messages from this client
-        socket.on("message", (msg) => {
-            console.log("Received message from client:", msg.toString());
-        });
-        // Handle client disconnect
+        // Handle messages from client
+        socket.on("message", (msg) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const parsed = JSON.parse(msg.toString());
+                if (parsed.type === "request_history") {
+                    const region = parsed.region;
+                    const filter = {
+                        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+                    };
+                    if (region)
+                        filter.region = region;
+                    const history = yield db
+                        .collection("status")
+                        .find(filter)
+                        .sort({ createdAt: 1 })
+                        .limit(HISTORY_LIMIT)
+                        .toArray();
+                    socket.send(JSON.stringify({ type: "history", data: history }));
+                }
+            }
+            catch (err) {
+                console.error("❌ Error processing client message:", err);
+            }
+        }));
         socket.on("close", () => {
             console.log("Client disconnected");
         });
     }));
     console.log(`✅ WebSocket server running on ws://localhost:${port}`);
-    return wss; // now correctly returns a WebSocketServer instance
+    return wss;
 }
 //# sourceMappingURL=websocket.js.map
