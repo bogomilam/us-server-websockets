@@ -3,8 +3,8 @@ dotenv.config();
 
 // Configuration for MongoDB connection and other constants
 // Ensure to replace with your actual MongoDB URI and database name
-export const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-export const DB_NAME = process.env.DB_NAME || "servers-db";
+export const MONGO_URI = process.env.MONGO_URI;
+export const DB_NAME = process.env.DB_NAME;
 
 export interface Endpoint {
   name: string;

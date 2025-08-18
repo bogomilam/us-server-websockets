@@ -4,7 +4,7 @@ import { Db } from "mongodb";
 const HISTORY_LIMIT = 50; // max items to send to client
 
 export function startWebSocketServer(db: Db, port = 8080): WebSocketServer {
-  const wss = new WebSocketServer({ port });
+  const wss = new WebSocketServer({ port, path: "/ws" });
 
   wss.on("connection", async (socket: WebSocket) => {
     console.log("🔌 Client connected");

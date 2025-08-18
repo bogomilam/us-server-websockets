@@ -10,6 +10,12 @@ const MONGO_URI = process.env.MONGO_URI!;
 const DB_NAME = process.env.DB_NAME;
 const FETCH_INTERVAL = 5 * 1000; // 10 sec
 
+
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI is not defined");
+  process.exit(1);
+}
+
 let wss: any;
 
 // sends db a broadcast message to all regions clients
